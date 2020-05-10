@@ -3,6 +3,8 @@ const { resolve } = require('path');
 const cli = require('commander');
 const { version } = require('../package.json');
 const { createServer } = require('./server');
+const cluster = require('cluster');
+const numCPUs = require('os').cpus().length;
 
 const optionNames = [
   'socks',
@@ -64,7 +66,29 @@ function main() {
 
   Object.assign(options, fileConfig);
 
-  createServer(options);
+  if (cluster.isMaster) {
+    const { port, socks, host } = options;
+    console.log(`Master ${process.pid}, SOCKS Server: ${socks}, HTTP proxy: ${host}:${port}`);
+
+    // Fork workers.
+    for (let i = 0; i < numCPUs; i++) {
+      cluster.fork();
+    }
+
+    cluster.on('exit', (worker) => {
+      console.log(`worker ${worker.process.pid} died, restart it.`);
+      setTimeout(function () { cluster.fork(); }, 0);
+    });
+
+  } else {
+
+    createServer(options, () => {
+      console.log(`Worker ${process.pid} started.`);
+    });
+
+  }
+
+
 }
 
 module.exports = {

@@ -8,19 +8,16 @@ const DEFAULT_OPTIONS = {
   port: 8080,
 };
 
-function createServer(opts) {
+function createServer(opts, cb) {
   const options = { ...DEFAULT_OPTIONS, ...opts };
 
   if (typeof options.level === 'string') {
     changeLevel(logger, options.level);
   }
 
-  const { port, socks, host } = options;
+  const { port, host } = options;
 
-  // eslint-disable-next-line
-  console.log(`SOCKS: ${socks}\nhttp-proxy listening: ${host}:${port}`);
-
-  return createProxyServer(options).listen(port, host);
+  return createProxyServer(options).listen(port, host, cb);
 }
 
 module.exports = {

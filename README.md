@@ -7,6 +7,8 @@ This is a **forked** project of the original `http-proxy-to-socks` project.
 
 It will use directly local http proxy when the `http request targeted server` is located at china mainland (using [china_ip_list](https://github.com/17mon/china_ip_list/blob/master/china_ip_list.txt)).
 
+Additional, add cluster support.
+
 ## Usage
 
 ```bash
