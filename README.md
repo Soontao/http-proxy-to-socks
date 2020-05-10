@@ -9,6 +9,8 @@ It will use directly local http proxy when the `http request targeted server` is
 
 Additional, add cluster support.
 
+![](https://res.cloudinary.com/digf90pwi/image/upload/v1589098842/http-proxy-to-socks_hpkkke.png)
+
 ## Usage
 
 ```bash
