@@ -3,11 +3,9 @@
 ![Node.js CI](https://github.com/Soontao/http-proxy-to-socks/workflows/Node.js%20CI/badge.svg)
 [![codecov](https://codecov.io/gh/Soontao/http-proxy-to-socks/branch/master/graph/badge.svg)](https://codecov.io/gh/Soontao/http-proxy-to-socks)
 
-This is a for project for `http-proxy-to-socks`.
+This is a **forked** project of the original `http-proxy-to-socks` project.
 
-It will use directly local http proxy when the `http request targeted server` is located at china mainland.
-
-It's based on the [china_ip_list](https://github.com/17mon/china_ip_list/blob/master/china_ip_list.txt) project.
+It will use directly local http proxy when the `http request targeted server` is located at china mainland (using [china_ip_list](https://github.com/17mon/china_ip_list/blob/master/china_ip_list.txt)).
 
 ## Setup
 
