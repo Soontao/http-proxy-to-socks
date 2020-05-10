@@ -5,10 +5,10 @@
 
 This is a **forked** project of the original `http-proxy-to-socks` project.
 
-* When the server is located in mainland China, data is directly transferred between the client and the server (using [china_ip_list](https://github.com/17mon/china_ip_list/blob/master/china_ip_list.txt)).
+* When the server is located in `mainland China`, data is directly transferred between the client and the server (using [china_ip_list](https://github.com/17mon/china_ip_list/blob/master/china_ip_list.txt)).
 * Nodejs multi-process `cluster` mode (and restart).
 
-![](https://res.cloudinary.com/digf90pwi/image/upload/v1589098842/http-proxy-to-socks_hpkkke.png)
+![](https://res.cloudinary.com/digf90pwi/image/upload/v1589102026/http-proxy-to-socks_1_ortiff.png)
 
 ## Usage
 
@@ -28,4 +28,4 @@ Please add more tests for corresponding features when you send a PR:
 npm run test
 ```
 
-## [License](./LICENSE.md)
+## [LICENSE](./LICENSE.md)
