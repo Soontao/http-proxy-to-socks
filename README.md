@@ -2,6 +2,7 @@
 
 ![Node.js CI](https://github.com/Soontao/http-proxy-to-socks/workflows/Node.js%20CI/badge.svg)
 [![codecov](https://codecov.io/gh/Soontao/http-proxy-to-socks/branch/master/graph/badge.svg)](https://codecov.io/gh/Soontao/http-proxy-to-socks)
+[![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/theosun/htps)](https://hub.docker.com/r/theosun/htps)
 
 This is a **forked** project of the original `http-proxy-to-socks` project.
 
