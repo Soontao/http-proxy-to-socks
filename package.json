@@ -11,7 +11,6 @@
     "test": "jest",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "prepare": "npm run test",
     "coverage": "npm test -- --coverage --no-cache"
   },
   "keywords": [
