@@ -49,7 +49,7 @@ describe('proxy_server', () => {
   let socket;
 
   beforeAll(() => {
-    logger.transports[0].silent = true;
+    logger.level = 'off'; // disable logger in unit test
   });
 
   beforeEach(() => {
