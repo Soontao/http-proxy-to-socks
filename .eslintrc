@@ -1,5 +1,10 @@
 {
-  "extends": "airbnb/base",
+  "parserOptions": {
+    "ecmaVersion": 2018
+  },
+  "extends": [
+    "eslint:recommended"
+  ],
   "globals": {
     "expect": true,
     "it": true,
@@ -7,8 +12,15 @@
     "beforeEach": true,
     "jest": true
   },
+  "env": {
+    "es6": true,
+    "jest": true,
+    "node": true
+  },
   "rules": {
     "no-underscore-dangle": 0,
-    "comma-dangle": 0
+    "comma-dangle": 0,
+    "camelcase": 0,
+    "semi": 1
   }
 }

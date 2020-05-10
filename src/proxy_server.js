@@ -2,9 +2,12 @@
 const util = require('util');
 const url = require('url');
 const http = require('http');
+const net = require("net");
 const fs = require('fs');
 const Socks = require('socks');
 const { logger } = require('./logger');
+const { get_agent } = require("./agents_cache");
+const { default_cn_net_matcher } = require("./net");
 
 function randomElement(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -29,13 +32,14 @@ function parseProxyLine(line) {
   return getProxyObject.apply(this, proxyInfo);
 }
 
-function requestListener(getProxyInfo, request, response) {
+async function requestListener(getProxyInfo, request, response) {
+
   logger.info(`request: ${request.url}`);
 
   const proxy = getProxyInfo();
   const ph = url.parse(request.url);
 
-  const socksAgent = new Socks.Agent({
+  const socksAgent = get_agent({
     proxy,
     target: { host: ph.hostname, port: ph.port },
   });
@@ -46,8 +50,14 @@ function requestListener(getProxyInfo, request, response) {
     method: request.method,
     path: ph.path,
     headers: request.headers,
-    agent: socksAgent,
   };
+
+  if (!await default_cn_net_matcher.hostname_in_net(ph.hostname)) {
+    logger.info(`proxy: ${request.url}`);
+    options.agent = socksAgent;
+  } else {
+    logger.info(`direct: ${request.url}`);
+  }
 
   const proxyRequest = http.request(options);
 
@@ -70,8 +80,7 @@ function requestListener(getProxyInfo, request, response) {
   request.pipe(proxyRequest);
 }
 
-function connectListener(getProxyInfo, request, socketRequest, head) {
-  logger.info(`connect: ${request.url}`);
+async function connectListener(getProxyInfo, request, socketRequest, head) {
 
   const proxy = getProxyInfo();
 
@@ -93,34 +102,57 @@ function connectListener(getProxyInfo, request, socketRequest, head) {
     }
   });
 
-  Socks.createConnection(options, (error, _socket) => {
-    socket = _socket;
+  if (!await default_cn_net_matcher.hostname_in_net(ph.hostname)) {
+    logger.info(`proxy-connect: ${request.url}`);
 
-    if (error) {
-      // error in SocksSocket creation
-      logger.error(`${error.message} connection creating on ${proxy.ipaddress}:${proxy.port}`);
-      socketRequest.write(`HTTP/${request.httpVersion} 500 Connection error\r\n\r\n`);
-      return;
-    }
+    Socks.createConnection(options, (error, _socket) => {
+      socket = _socket;
+
+      if (error) {
+        // error in SocksSocket creation
+        logger.error(`${error.message} connection creating on ${proxy.ipaddress}:${proxy.port}`);
+        socketRequest.write(`HTTP/${request.httpVersion} 500 Connection error\r\n\r\n`);
+        return;
+      }
+
+      socket.on('error', (err) => {
+        logger.error(`${err.message}`);
+        socketRequest.destroy(err);
+      });
+
+      // tunneling to the host
+      socket.pipe(socketRequest);
+      socketRequest.pipe(socket);
+
+      socket.write(head);
+      socketRequest.write(`HTTP/${request.httpVersion} 200 Connection established\r\n\r\n`);
+      socket.resume();
+
+    });
+  } else {
+    logger.info(`direct-connect: ${request.url}`);
+
+    socket = net.connect(ph.port, ph.hostname, () => {
+
+      socketRequest.write("HTTP/1.1 200 OK\r\n\r\n");
+      socketRequest.pipe(socket);
+      socket.pipe(socketRequest);
+
+    });
 
     socket.on('error', (err) => {
       logger.error(`${err.message}`);
       socketRequest.destroy(err);
     });
 
-    // tunneling to the host
-    socket.pipe(socketRequest);
-    socketRequest.pipe(socket);
+  }
 
-    socket.write(head);
-    socketRequest.write(`HTTP/${request.httpVersion} 200 Connection established\r\n\r\n`);
-    socket.resume();
-  });
+
 }
 
 function ProxyServer(options) {
   // TODO: start point
-  http.Server.call(this, () => {});
+  http.Server.call(this, () => { });
 
   this.proxyList = [];
 
@@ -189,7 +221,7 @@ ProxyServer.prototype.loadProxyFile = function loadProxyFile(fileName) {
 };
 
 module.exports = {
-  createServer: options => new ProxyServer(options),
+  createServer: (options) => new ProxyServer(options),
   requestListener,
   connectListener,
   getProxyObject,

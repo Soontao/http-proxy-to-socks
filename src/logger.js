@@ -6,6 +6,7 @@ const { Console } = transports;
 const { combine, printf } = format;
 
 const DEFAULT_COMMON_OPTIONS = {
+  name: "default",
   colorize: true,
   timestamp: true,
 };
@@ -23,30 +24,29 @@ function getFormatedDate() {
   const date = new Date();
 
   return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
-      + ` ${fillDigit(date.getHours())}:${fillDigit(date.getMinutes())}`
-      + `:${fillDigit(date.getSeconds())}`;
+    + ` ${fillDigit(date.getHours())}:${fillDigit(date.getMinutes())}`
+    + `:${fillDigit(date.getSeconds())}`;
 }
 
 function createTransports() {
   return [
-    new Console(Object.assign({}, DEFAULT_COMMON_OPTIONS)),
+    new Console({ ...DEFAULT_COMMON_OPTIONS }),
   ];
 }
 
 function colorLevel(str) {
   if (str === 'error') {
     return chalk.red(str);
-  } else if (str === 'info') {
+  } if (str === 'info') {
     return chalk.green(str);
   }
 
   return str;
 }
 
-function createLogger(level = 'warn') {
+function createLogger(level = process.env.LOGGER_LEVEL || 'warn') {
   return createWinstonLogger({
-    format: combine(printf(info =>
-        `${getFormatedDate()} - ${colorLevel(info.level)} ${info.message}`)),
+    format: combine(printf((info) => `${getFormatedDate()} - ${colorLevel(info.level)} ${info.message}`)),
     level,
     transports: createTransports(),
   });

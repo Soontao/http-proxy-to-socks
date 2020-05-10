@@ -1,17 +1,18 @@
 {
   "name": "http-proxy-to-socks",
   "version": "1.1.2",
-  "description": "hpts(http-proxy-to-socks) is a nodejs client to convert socks proxy into http proxy",
-  "main": "lib/server.js",
+  "description": "hpts (http-proxy-to-socks) is a nodejs client to convert socks proxy into http proxy",
+  "main": "srv/server.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/oyyd/http-proxy-to-socks"
   },
   "scripts": {
-    "build": "babel src --out-dir lib",
     "dev": "jest --watch",
-    "test": "eslint src && jest",
-    "prepublish": "npm run test && npm run build"
+    "test": "jest",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "prepare": "npm run test"
   },
   "keywords": [
     "socks",
@@ -22,27 +23,32 @@
     "hpts": "./bin/hpts.js"
   },
   "author": "oyyd <oyydoibh@gmail.com>",
+  "contributors": [
+    {
+      "name": "Theo Sun",
+      "email": "theo.sun@outlook.com"
+    }
+  ],
   "license": "MIT",
   "dependencies": {
     "chalk": "^2.4.1",
     "commander": "^2.9.0",
+    "lodash": "^4.17.15",
+    "netmask": "^1.0.6",
     "socks": "^1.1.10",
     "winston": "^3.1.0"
   },
   "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-jest": "^18.0.0",
-    "babel-plugin-transform-async-to-generator": "^6.22.0",
-    "babel-polyfill": "^6.22.0",
-    "babel-preset-es2015": "^6.18.0",
-    "eslint": "^3.13.1",
-    "eslint-config-airbnb": "^14.0.0",
-    "eslint-config-airbnb-base": "^11.0.1",
-    "eslint-plugin-import": "^2.2.0",
-    "jest": "^18.1.0"
+    "@types/jest": "^25.2.1",
+    "@types/node-fetch": "^2.5.7",
+    "eslint": "^7",
+    "jest": "^26"
+  },
+  "engines": {
+    "node": ">=10.6.0"
   },
   "jest": {
-    "testPathDirs": [
+    "roots": [
       "<rootDir>/src"
     ],
     "testRegex": "(\\.|/)(test|spec)\\.js$"

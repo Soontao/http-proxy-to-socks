@@ -9,7 +9,7 @@ const DEFAULT_OPTIONS = {
 };
 
 function createServer(opts) {
-  const options = Object.assign({}, DEFAULT_OPTIONS, opts);
+  const options = { ...DEFAULT_OPTIONS, ...opts };
 
   if (typeof options.level === 'string') {
     changeLevel(logger, options.level);
