@@ -1,9 +1,29 @@
 {
-  // Use IntelliSense to learn about possible attributes.
-  // Hover to view descriptions of existing attributes.
-  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "launch-hsts",
+      "program": "${workspaceFolder}/bin/hpts.js",
+      "env": {
+        "DISABLE_CLUSTER": "true",
+        "LOGGER_LEVEL": "info"
+      },
+      "args": [
+        "--port",
+        "18080",
+        "--host",
+        "0.0.0.0",
+        "--socks",
+        "192.168.3.88:10080",
+        "--level",
+        "info"
+      ],
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
     {
       "type": "node",
       "name": "vscode-jest-tests",

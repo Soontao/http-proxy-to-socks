@@ -6,7 +6,6 @@ const net = require("net");
 const fs = require('fs');
 const Socks = require('socks');
 const { logger } = require('./logger');
-const { get_agent } = require("./agents_cache");
 const { default_cn_net_matcher } = require("./net");
 
 function randomElement(array) {
@@ -34,15 +33,13 @@ function parseProxyLine(line) {
 
 async function requestListener(getProxyInfo, request, response) {
 
-  logger.info(`request: ${request.url}`);
 
   const proxy = getProxyInfo();
   const ph = url.parse(request.url);
-
-  const socksAgent = get_agent({
+  const agentOpt = {
     proxy,
     target: { host: ph.hostname, port: ph.port },
-  });
+  };
 
   const options = {
     port: ph.port,
@@ -53,10 +50,10 @@ async function requestListener(getProxyInfo, request, response) {
   };
 
   if (!await default_cn_net_matcher.hostname_in_net(ph.hostname)) {
-    logger.info(`proxy: ${request.url}`);
-    options.agent = socksAgent;
+    logger.info(`proxy-request: ${request.url}`);
+    options.agent = new Socks.Agent(agentOpt);
   } else {
-    logger.info(`direct: ${request.url}`);
+    logger.info(`direct-request: ${request.url}`);
   }
 
   const proxyRequest = http.request(options);
@@ -96,13 +93,21 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
   let socket;
 
   socketRequest.on('error', (err) => {
-    logger.error(`${err.message}`);
+    logger.error(`client error for ${request.url}: '${err.message}'`);
     if (socket) {
       socket.destroy(err);
     }
   });
 
+  socketRequest.on("end", () => {
+    logger.info(`client socket for ${request.url}: ended`);
+    if (socket && !socket.destroyed) {
+      socket.end();
+    }
+  });
+
   if (!await default_cn_net_matcher.hostname_in_net(ph.hostname)) {
+
     logger.info(`proxy-connect: ${request.url}`);
 
     Socks.createConnection(options, (error, _socket) => {
@@ -116,8 +121,15 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
       }
 
       socket.on('error', (err) => {
-        logger.error(`${err.message}`);
+        logger.error(`socket error for ${request.url}: '${err.message}'`);
         socketRequest.destroy(err);
+      });
+
+      socket.on("end", () => {
+        logger.info(`socket for ${request.url}: ended`);
+        if (!socketRequest.destroyed) {
+          socketRequest.end();
+        }
       });
 
       // tunneling to the host
@@ -130,6 +142,7 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
 
     });
   } else {
+
     logger.info(`direct-connect: ${request.url}`);
 
     socket = net.connect(ph.port, ph.hostname, () => {
@@ -141,8 +154,15 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
     });
 
     socket.on('error', (err) => {
-      logger.error(`${err.message}`);
+      logger.error(`socket error for ${request.url}: '${err.message}'`);
       socketRequest.destroy(err);
+    });
+
+    socket.on("end", () => {
+      logger.info(`socket for ${request.url}: ended`);
+      if (!socketRequest.destroyed) {
+        socketRequest.end();
+      }
     });
 
   }

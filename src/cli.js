@@ -66,27 +66,42 @@ function main() {
 
   Object.assign(options, fileConfig);
 
-  if (cluster.isMaster) {
-    const { port, socks, host } = options;
-    console.log(`Master ${process.pid}, SOCKS Server: ${socks}, HTTP proxy: ${host}:${port}`);
+  const { port, socks, host } = options;
 
-    // Fork workers.
-    for (let i = 0; i < numCPUs; i++) {
-      cluster.fork();
-    }
+  if (process.env.DISABLE_CLUSTER) {
 
-    cluster.on('exit', (worker) => {
-      console.log(`worker ${worker.process.pid} died, restart it.`);
-      setTimeout(function () { cluster.fork(); }, 0);
+    console.log(`SOCKS Server: ${socks}, HTTP proxy: ${host}:${port}`);
+
+    createServer(options, () => {
+      console.log(`HPTS ${process.pid} started.`);
     });
 
   } else {
 
-    createServer(options, () => {
-      console.log(`Worker ${process.pid} started.`);
-    });
+    if (cluster.isMaster) {
 
+      console.log(`Master ${process.pid}, SOCKS Server: ${socks}, HTTP proxy: ${host}:${port}`);
+
+      // Fork workers.
+      for (let i = 0; i < numCPUs; i++) {
+        cluster.fork();
+      }
+
+      cluster.on('exit', (worker) => {
+        console.log(`worker ${worker.process.pid} died, restart it.`);
+        setTimeout(function () { cluster.fork(); }, 0);
+      });
+
+    } else {
+
+      createServer(options, () => {
+        console.log(`Worker ${process.pid} started.`);
+      });
+
+    }
   }
+
+
 
 
 }
