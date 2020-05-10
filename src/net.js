@@ -1,8 +1,8 @@
 const { Netmask } = require('netmask');
 const { map, some } = require('lodash');
 const dns = require('dns').promises;
-const cn_net_masks = require("./net_cn_ip_list");
-const { logger } = require("./logger");
+const cn_net_masks = require('./net_cn_ip_list');
+const { logger } = require('./logger');
 
 class NetMatcher {
 
@@ -35,7 +35,7 @@ class NetMatcher {
    * 
    * @param {string} hostname 
    */
-  async cached_resolve(hostname = "") {
+  async cached_resolve(hostname = '') {
 
     if (!this._in_memory_dns_cache.has(hostname)) {
       const ips = await dns.resolve4(hostname);

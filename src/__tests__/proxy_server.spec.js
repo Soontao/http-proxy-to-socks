@@ -34,7 +34,7 @@ const {
   connectListener,
 } = require('../proxy_server');
 const { random_int } = require('../util');
-const { logger } = require("../logger");
+const { logger } = require('../logger');
 
 
 describe('proxy_server', () => {

@@ -21,6 +21,10 @@
     "no-underscore-dangle": 0,
     "comma-dangle": 0,
     "camelcase": 0,
-    "semi": 1
+    "semi": 1,
+    "quotes": [
+      "error",
+      "single"
+    ]
   }
 }

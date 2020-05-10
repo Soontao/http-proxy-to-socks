@@ -2,11 +2,13 @@
 const util = require('util');
 const url = require('url');
 const http = require('http');
-const net = require("net");
+const net = require('net');
 const fs = require('fs');
 const Socks = require('socks');
 const { logger } = require('./logger');
-const { default_cn_net_matcher } = require("./net");
+const { default_cn_net_matcher } = require('./net');
+
+const SOCKET_TIMEOUT = 120 * 1000; // 120 seconds
 
 function randomElement(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -32,7 +34,6 @@ function parseProxyLine(line) {
 }
 
 async function requestListener(getProxyInfo, request, response) {
-
 
   const proxy = getProxyInfo();
   const ph = url.parse(request.url);
@@ -88,6 +89,7 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
     proxy,
     target: { host, port },
     command: 'connect',
+    timeout: SOCKET_TIMEOUT
   };
 
   let socket;
@@ -99,7 +101,7 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
     }
   });
 
-  socketRequest.on("end", () => {
+  socketRequest.on('end', () => {
     logger.info(`client socket for ${request.url}: ended`);
     if (socket && !socket.destroyed) {
       socket.end();
@@ -125,7 +127,7 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
         socketRequest.destroy(err);
       });
 
-      socket.on("end", () => {
+      socket.on('end', () => {
         logger.info(`socket for ${request.url}: ended`);
         if (!socketRequest.destroyed) {
           socketRequest.end();
@@ -145,9 +147,11 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
 
     logger.info(`direct-connect: ${request.url}`);
 
-    socket = net.connect(ph.port, ph.hostname, () => {
+    socket = net.connect({
+      port: ph.port, host: ph.hostname, timeout: SOCKET_TIMEOUT
+    }, () => {
 
-      socketRequest.write("HTTP/1.1 200 OK\r\n\r\n");
+      socketRequest.write('HTTP/1.1 200 OK\r\n\r\n');
       socketRequest.pipe(socket);
       socket.pipe(socketRequest);
 
@@ -158,7 +162,7 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
       socketRequest.destroy(err);
     });
 
-    socket.on("end", () => {
+    socket.on('end', () => {
       logger.info(`socket for ${request.url}: ended`);
       if (!socketRequest.destroyed) {
         socketRequest.end();

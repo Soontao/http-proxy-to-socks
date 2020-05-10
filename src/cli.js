@@ -66,6 +66,8 @@ function main() {
 
   Object.assign(options, fileConfig);
 
+  const process_number = parseInt(process.env.PROCESS_NUM || `${(numCPUs * 2)}`);
+
   const { port, socks, host } = options;
 
   if (process.env.DISABLE_CLUSTER) {
@@ -83,13 +85,13 @@ function main() {
       console.log(`Master ${process.pid}, SOCKS Server: ${socks}, HTTP proxy: ${host}:${port}`);
 
       // Fork workers.
-      for (let i = 0; i < numCPUs; i++) {
+      for (let i = 0; i < process_number; i++) {
         cluster.fork();
       }
 
       cluster.on('exit', (worker) => {
         console.log(`worker ${worker.process.pid} died, restart it.`);
-        setTimeout(function () { cluster.fork(); }, 0);
+        setTimeout(() => { cluster.fork(); }, 0);
       });
 
     } else {
