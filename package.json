@@ -5,7 +5,7 @@
   "main": "srv/server.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/oyyd/http-proxy-to-socks"
+    "url": "https://github.com/Soontao/http-proxy-to-socks"
   },
   "scripts": {
     "test": "jest",
@@ -34,7 +34,8 @@
     "lodash": "^4.17.15",
     "log4js": "^6.2.1",
     "netmask": "^1.0.6",
-    "socks": "^1.1.10"
+    "socks": "^1.1.10",
+    "workerpool": "^5.0.4"
   },
   "devDependencies": {
     "@types/jest": "^25.2.1",
@@ -43,7 +44,7 @@
     "jest": "^26"
   },
   "engines": {
-    "node": ">=10.6.0"
+    "node": ">=12"
   },
   "jest": {
     "roots": [

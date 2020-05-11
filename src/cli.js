@@ -3,6 +3,7 @@ const { resolve } = require('path');
 const cli = require('commander');
 const { version } = require('../package.json');
 const { createServer } = require('./server');
+const { logger } = require('./logger');
 const cluster = require('cluster');
 const numCPUs = require('os').cpus().length;
 
@@ -15,6 +16,7 @@ const optionNames = [
 ];
 
 function getFileConfig(filePath) {
+
   const absFile = resolve(process.cwd(), filePath);
 
   const content = readFileSync(absFile).toString('utf8');
@@ -48,6 +50,7 @@ function getOptionsArgs(args) {
 }
 
 function main() {
+
   cli.version(version)
     .option('-s, --socks [socks]', 'specify your socks proxy host, default: 127.0.0.1:1080')
     .option('-p, --port [port]', 'specify the listening port of http proxy server, default: 8080')
@@ -72,17 +75,17 @@ function main() {
 
   if (process.env.DISABLE_CLUSTER) {
 
-    console.log(`SOCKS Server: ${socks}, HTTP proxy: ${host}:${port}`);
+    logger.info(`SOCKS Server: ${socks}, HTTP proxy: ${host}:${port}`);
 
     createServer(options, () => {
-      console.log(`HPTS ${process.pid} started.`);
+      logger.info(`HPTS ${process.pid} started.`);
     });
 
   } else {
 
     if (cluster.isMaster) {
 
-      console.log(`Master ${process.pid}, SOCKS Server: ${socks}, HTTP proxy: ${host}:${port}`);
+      logger.info(`Master ${process.pid}, SOCKS Server: ${socks}, HTTP proxy: ${host}:${port}`);
 
       // Fork workers.
       for (let i = 0; i < process_number; i++) {
@@ -90,14 +93,14 @@ function main() {
       }
 
       cluster.on('exit', (worker) => {
-        console.log(`worker ${worker.process.pid} died, restart it.`);
+        logger.error(`worker ${worker.process.pid} died, restart it.`);
         setTimeout(() => { cluster.fork(); }, 0);
       });
 
     } else {
 
       createServer(options, () => {
-        console.log(`Worker ${process.pid} started.`);
+        logger.info(`Worker ${process.pid} started.`);
       });
 
     }

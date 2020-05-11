@@ -2,6 +2,7 @@ const { random_int } = require('../util');
 
 
 describe('Util Test Suite', () => {
+
   it('should have all random data', () => {
     const s = new Set();
     // eslint-disable-next-line no-plusplus
@@ -10,4 +11,5 @@ describe('Util Test Suite', () => {
     }
     expect(s.size).toBe(5);
   });
+
 });

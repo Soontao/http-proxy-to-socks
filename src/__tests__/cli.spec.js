@@ -1,8 +1,11 @@
 const { getOptionsArgs } = require('../cli');
 
 describe('cli', () => {
+
   describe('getOptionsArgs', () => {
+
     it('should return an object with specified fields when provided', () => {
+
       const options = {
         socks: 'socks',
         port: 'port',
@@ -21,6 +24,7 @@ describe('cli', () => {
 
         expect(res[name]).toBeTruthy();
       });
+
     });
   });
 });

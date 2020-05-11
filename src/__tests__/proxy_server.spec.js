@@ -16,6 +16,13 @@ jest.mock('socks', () => ({
   Agent: jest.fn(() => mockAgent),
 }));
 
+jest.mock('../net.js', () => ({
+  create_cn_net_matcher: jest.fn(() => ({
+    hostname_in_net: jest.fn(),
+    destroy: jest.fn()
+  }))
+}));
+
 function last(array) {
   return array[array.length - 1];
 }
@@ -35,6 +42,7 @@ const {
 } = require('../proxy_server');
 const { random_int } = require('../util');
 const { logger } = require('../logger');
+const { create_cn_net_matcher } = require('../net');
 
 
 describe('proxy_server', () => {
@@ -47,9 +55,15 @@ describe('proxy_server', () => {
   let response;
   let socketRequest;
   let socket;
+  let net_matcher;
 
   beforeAll(() => {
     logger.level = 'off'; // disable logger in unit test
+    net_matcher = create_cn_net_matcher();
+  });
+
+  afterAll(async () => {
+    await net_matcher.destroy();
   });
 
   beforeEach(() => {
@@ -157,7 +171,7 @@ describe('proxy_server', () => {
 
   describe('requestListener', () => {
     it('should create an socks agent and take it as request agent', async () => {
-      await requestListener(getProxyInfo, request, response);
+      await requestListener(getProxyInfo, net_matcher, request, response);
 
       const lastCall = last(Socks.Agent.mock.calls);
       const httpLastCall = last(http.request.mock.calls);
@@ -167,7 +181,7 @@ describe('proxy_server', () => {
     });
 
     it('should return 500 when error thrown', async () => {
-      await requestListener(getProxyInfo, request, response);
+      await requestListener(getProxyInfo, net_matcher, request, response);
 
       const onErrorArgs = getLastMockOn('error');
 
@@ -188,7 +202,7 @@ describe('proxy_server', () => {
         pipe: jest.fn(),
       };
 
-      await requestListener(getProxyInfo, request, response);
+      await requestListener(getProxyInfo, net_matcher, request, response);
 
       const onResponseArgs = getLastMockOn('response');
 
@@ -203,7 +217,7 @@ describe('proxy_server', () => {
   describe('connectListener', () => {
     it('should create socks connections', async () => {
       const head = '';
-      await connectListener(getProxyInfo, socksRequest, socketRequest, head);
+      await connectListener(getProxyInfo, net_matcher, socksRequest, socketRequest, head);
 
       const lastCreateConnectionCall = last(Socks.createConnection.mock.calls);
 
@@ -212,7 +226,7 @@ describe('proxy_server', () => {
 
     it('should write 500 when error thrown', async () => {
       const head = '';
-      await connectListener(getProxyInfo, socksRequest, socketRequest, head);
+      await connectListener(getProxyInfo, net_matcher, socksRequest, socketRequest, head);
 
       const lastCreateConnectionCall = last(Socks.createConnection.mock.calls);
 
@@ -227,7 +241,7 @@ describe('proxy_server', () => {
     it('should pipe sockets when socket connected', async () => {
       const head = '';
 
-      await connectListener(getProxyInfo, socksRequest, socketRequest, head);
+      await connectListener(getProxyInfo, net_matcher, socksRequest, socketRequest, head);
 
       const lastCreateConnectionCall = last(Socks.createConnection.mock.calls);
 
@@ -241,7 +255,8 @@ describe('proxy_server', () => {
   });
 
   describe('createServer', () => {
-    it('should push this.proxyList', () => {
+
+    it('should push this.proxyList', async () => {
       const options = {
         socks: `127.0.0.1:${SOCKS_PORT}`,
       };

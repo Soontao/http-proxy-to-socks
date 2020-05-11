@@ -6,7 +6,7 @@ const net = require('net');
 const fs = require('fs');
 const Socks = require('socks');
 const { logger } = require('./logger');
-const { default_cn_net_matcher } = require('./net');
+
 
 const SOCKET_TIMEOUT = 120 * 1000; // 120 seconds
 
@@ -33,7 +33,7 @@ function parseProxyLine(line) {
   return getProxyObject.apply(this, proxyInfo);
 }
 
-async function requestListener(getProxyInfo, request, response) {
+async function requestListener(getProxyInfo, net_matcher, request, response) {
 
   const proxy = getProxyInfo();
   const ph = url.parse(request.url);
@@ -50,11 +50,11 @@ async function requestListener(getProxyInfo, request, response) {
     headers: request.headers,
   };
 
-  if (!await default_cn_net_matcher.hostname_in_net(ph.hostname)) {
-    logger.info(`proxy-request: ${request.url}`);
+  if (!await net_matcher.hostname_in_net(ph.hostname)) {
+    logger.debug(`proxy-request: ${request.url}`);
     options.agent = new Socks.Agent(agentOpt);
   } else {
-    logger.info(`direct-request: ${request.url}`);
+    logger.debug(`direct-request: ${request.url}`);
   }
 
   const proxyRequest = http.request(options);
@@ -78,7 +78,7 @@ async function requestListener(getProxyInfo, request, response) {
   request.pipe(proxyRequest);
 }
 
-async function connectListener(getProxyInfo, request, socketRequest, head) {
+async function connectListener(getProxyInfo, net_matcher, request, socketRequest, head) {
 
   const proxy = getProxyInfo();
 
@@ -102,13 +102,13 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
   });
 
   socketRequest.on('end', () => {
-    logger.info(`client socket for ${request.url}: ended`);
+    logger.debug(`client socket for ${request.url}: ended`);
     if (socket && !socket.destroyed) {
       socket.end();
     }
   });
 
-  if (!await default_cn_net_matcher.hostname_in_net(ph.hostname)) {
+  if (!await net_matcher.hostname_in_net(ph.hostname)) {
 
     logger.info(`proxy-connect: ${request.url}`);
 
@@ -128,7 +128,7 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
       });
 
       socket.on('end', () => {
-        logger.info(`socket for ${request.url}: ended`);
+        logger.debug(`socket for ${request.url}: ended`);
         if (!socketRequest.destroyed) {
           socketRequest.end();
         }
@@ -163,7 +163,7 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
     });
 
     socket.on('end', () => {
-      logger.info(`socket for ${request.url}: ended`);
+      logger.debug(`socket for ${request.url}: ended`);
       if (!socketRequest.destroyed) {
         socketRequest.end();
       }
@@ -196,14 +196,18 @@ function ProxyServer(options) {
     }
   }
 
+  this.net_matcher = require('./net').create_cn_net_matcher();
+
   this.addListener(
     'request',
-    requestListener.bind(null, () => randomElement(this.proxyList))
+    requestListener.bind(null, () => randomElement(this.proxyList), this.net_matcher)
   );
+
   this.addListener(
     'connect',
-    connectListener.bind(null, () => randomElement(this.proxyList))
+    connectListener.bind(null, () => randomElement(this.proxyList), this.net_matcher)
   );
+
 }
 
 util.inherits(ProxyServer, http.Server);
@@ -242,6 +246,10 @@ ProxyServer.prototype.loadProxyFile = function loadProxyFile(fileName) {
     }
     self.proxyList = proxyList;
   });
+};
+
+ProxyServer.prototype.destroy = async () => {
+  await this.net_matcher.destroy();
 };
 
 module.exports = {
