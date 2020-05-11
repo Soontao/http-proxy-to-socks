@@ -50,6 +50,10 @@
     "roots": [
       "<rootDir>/src"
     ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/src/net.js"
+    ],
     "testRegex": "(\\.|/)(test|spec)\\.js$"
   }
 }

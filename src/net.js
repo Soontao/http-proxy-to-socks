@@ -17,12 +17,12 @@ class NetMatcher {
     this._masks = masks;
     this._in_memory_dns_cache = new Map();
     this._in_memory_ip_match_cache = new Map();
-
     this._pool = workerpool.pool({
       minWorkers: numCPUs,
       maxWorkers: numCPUs * 4,
       workerType: 'thread'
     });
+
 
   }
 
