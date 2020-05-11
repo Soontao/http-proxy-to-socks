@@ -6,7 +6,7 @@ const net = require('net');
 const fs = require('fs');
 const Socks = require('socks');
 const { logger } = require('./logger');
-
+const { get_gfw_list_matcher } = require('./gfwlist');
 
 const SOCKET_TIMEOUT = 120 * 1000; // 120 seconds
 
@@ -42,6 +42,20 @@ async function requestListener(getProxyInfo, net_matcher, request, response) {
     target: { host: ph.hostname, port: ph.port },
   };
 
+  let direct = true;
+
+  const matcher = await get_gfw_list_matcher();
+
+  if (matcher(request.url)) {
+    logger.info(`gfw matched: ${request.url}, proxy`);
+    direct = false;
+  } else if (!await net_matcher.hostname_in_net(ph.hostname)) {
+    logger.info(`ip matched: ${request.url}, proxy`);
+    direct = false;
+  } else {
+    logger.info(`not matched: ${request.url}, direct`);
+  }
+
   const options = {
     port: ph.port,
     hostname: ph.hostname,
@@ -50,7 +64,7 @@ async function requestListener(getProxyInfo, net_matcher, request, response) {
     headers: request.headers,
   };
 
-  if (!await net_matcher.hostname_in_net(ph.hostname)) {
+  if (!direct) {
     logger.debug(`proxy-request: ${request.url}`);
     options.agent = new Socks.Agent(agentOpt);
   } else {
@@ -108,9 +122,24 @@ async function connectListener(getProxyInfo, net_matcher, request, socketRequest
     }
   });
 
-  if (!await net_matcher.hostname_in_net(ph.hostname)) {
+  const matcher = await get_gfw_list_matcher();
 
-    logger.info(`proxy-connect: ${request.url}`);
+  let direct = true;
+
+  // for CONNECT, only have hostname:port
+  if (matcher(`https://${request.url}`)) {
+    logger.info(`gfw matched: ${request.url}, proxy`);
+    direct = false;
+  } else if (!await net_matcher.hostname_in_net(ph.hostname)) {
+    logger.info(`ip matched: ${request.url}, proxy`);
+    direct = false;
+  } else {
+    logger.info(`not matched: ${request.url}, direct`);
+  }
+
+  if (!direct) {
+
+    logger.debug(`proxy-connect: ${request.url}`);
 
     Socks.createConnection(options, (error, _socket) => {
       socket = _socket;
@@ -145,7 +174,7 @@ async function connectListener(getProxyInfo, net_matcher, request, socketRequest
     });
   } else {
 
-    logger.info(`direct-connect: ${request.url}`);
+    logger.debug(`direct-connect: ${request.url}`);
 
     socket = net.connect({
       port: ph.port, host: ph.hostname, timeout: SOCKET_TIMEOUT
