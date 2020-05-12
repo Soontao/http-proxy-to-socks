@@ -1,4 +1,4 @@
-const { map, some } = require('lodash');
+const { map, some, memoize } = require('lodash');
 const dns = require('dns').promises;
 const cn_net_masks = require('./net_cn_ip_list');
 const { logger } = require('./logger');
@@ -88,4 +88,21 @@ const create_cn_net_matcher = () => {
   return new NetMatcher(cn_net_masks);
 };
 
-module.exports = { NetMatcher, create_cn_net_matcher };
+const create_internal_net_matcher = () => {
+  return new NetMatcher([
+    '10.0.0.0/8',
+    '172.16.0.0/12',
+    '192.168.0.0/16',
+  ]);
+};
+
+const get_cn_net_matcher = memoize(() => create_cn_net_matcher());
+
+const get_internal_net_matcher = memoize(() => create_internal_net_matcher());
+
+module.exports = {
+  NetMatcher,
+  create_cn_net_matcher,
+  get_internal_net_matcher,
+  get_cn_net_matcher
+};

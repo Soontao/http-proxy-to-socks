@@ -7,6 +7,7 @@ const fs = require('fs');
 const Socks = require('socks');
 const { logger } = require('./logger');
 const { get_gfw_list_matcher } = require('./gfwlist');
+const { get_internal_net_matcher, get_cn_net_matcher } = require('./net');
 
 const SOCKET_TIMEOUT = 120 * 1000; // 120 seconds
 
@@ -33,7 +34,10 @@ function parseProxyLine(line) {
   return getProxyObject.apply(this, proxyInfo);
 }
 
-async function requestListener(getProxyInfo, net_matcher, request, response) {
+async function requestListener(getProxyInfo, request, response) {
+
+  const net_matcher = get_cn_net_matcher();
+  const internal_net_matcher = get_internal_net_matcher();
 
   const proxy = getProxyInfo();
   const ph = url.parse(request.url);
@@ -49,6 +53,9 @@ async function requestListener(getProxyInfo, net_matcher, request, response) {
   if (matcher(request.url)) {
     logger.info(`gfw matched: ${request.url}, proxy`);
     direct = false;
+  } else if (await internal_net_matcher.hostname_in_net(ph.hostname)) {
+    logger.info(`ip matched (internal): ${request.url}, direct`);
+    direct = true;
   } else if (!await net_matcher.hostname_in_net(ph.hostname)) {
     logger.info(`ip matched: ${request.url}, proxy`);
     direct = false;
@@ -92,7 +99,10 @@ async function requestListener(getProxyInfo, net_matcher, request, response) {
   request.pipe(proxyRequest);
 }
 
-async function connectListener(getProxyInfo, net_matcher, request, socketRequest, head) {
+async function connectListener(getProxyInfo, request, socketRequest, head) {
+
+  const net_matcher = get_cn_net_matcher();
+  const internal_net_matcher = get_internal_net_matcher();
 
   const proxy = getProxyInfo();
 
@@ -130,6 +140,9 @@ async function connectListener(getProxyInfo, net_matcher, request, socketRequest
   if (matcher(`https://${request.url}`)) {
     logger.info(`gfw matched: ${request.url}, proxy`);
     direct = false;
+  } else if (await internal_net_matcher.hostname_in_net(ph.hostname)) {
+    logger.info(`ip matched (internal): ${request.url}, direct`);
+    direct = true;
   } else if (!await net_matcher.hostname_in_net(ph.hostname)) {
     logger.info(`ip matched: ${request.url}, proxy`);
     direct = false;
@@ -225,16 +238,14 @@ function ProxyServer(options) {
     }
   }
 
-  this.net_matcher = require('./net').create_cn_net_matcher();
-
   this.addListener(
     'request',
-    requestListener.bind(null, () => randomElement(this.proxyList), this.net_matcher)
+    requestListener.bind(null, () => randomElement(this.proxyList))
   );
 
   this.addListener(
     'connect',
-    connectListener.bind(null, () => randomElement(this.proxyList), this.net_matcher)
+    connectListener.bind(null, () => randomElement(this.proxyList))
   );
 
 }
@@ -278,7 +289,6 @@ ProxyServer.prototype.loadProxyFile = function loadProxyFile(fileName) {
 };
 
 ProxyServer.prototype.destroy = async () => {
-  await this.net_matcher.destroy();
 };
 
 module.exports = {

@@ -20,6 +20,14 @@ jest.mock('../net.js', () => ({
   create_cn_net_matcher: jest.fn(() => ({
     hostname_in_net: jest.fn(),
     destroy: jest.fn()
+  })),
+  get_cn_net_matcher: jest.fn(() => ({
+    hostname_in_net: jest.fn(),
+    destroy: jest.fn()
+  })),
+  get_internal_net_matcher: jest.fn(() => ({
+    hostname_in_net: jest.fn(),
+    destroy: jest.fn()
   }))
 }));
 
@@ -171,7 +179,7 @@ describe('proxy_server', () => {
 
   describe('requestListener', () => {
     it('should create an socks agent and take it as request agent', async () => {
-      await requestListener(getProxyInfo, net_matcher, request, response);
+      await requestListener(getProxyInfo, request, response);
 
       const lastCall = last(Socks.Agent.mock.calls);
       const httpLastCall = last(http.request.mock.calls);
@@ -181,7 +189,7 @@ describe('proxy_server', () => {
     });
 
     it('should return 500 when error thrown', async () => {
-      await requestListener(getProxyInfo, net_matcher, request, response);
+      await requestListener(getProxyInfo, request, response);
 
       const onErrorArgs = getLastMockOn('error');
 
@@ -202,7 +210,7 @@ describe('proxy_server', () => {
         pipe: jest.fn(),
       };
 
-      await requestListener(getProxyInfo, net_matcher, request, response);
+      await requestListener(getProxyInfo, request, response);
 
       const onResponseArgs = getLastMockOn('response');
 
@@ -217,7 +225,7 @@ describe('proxy_server', () => {
   describe('connectListener', () => {
     it('should create socks connections', async () => {
       const head = '';
-      await connectListener(getProxyInfo, net_matcher, socksRequest, socketRequest, head);
+      await connectListener(getProxyInfo, socksRequest, socketRequest, head);
 
       const lastCreateConnectionCall = last(Socks.createConnection.mock.calls);
 
@@ -226,7 +234,7 @@ describe('proxy_server', () => {
 
     it('should write 500 when error thrown', async () => {
       const head = '';
-      await connectListener(getProxyInfo, net_matcher, socksRequest, socketRequest, head);
+      await connectListener(getProxyInfo, socksRequest, socketRequest, head);
 
       const lastCreateConnectionCall = last(Socks.createConnection.mock.calls);
 
@@ -241,7 +249,7 @@ describe('proxy_server', () => {
     it('should pipe sockets when socket connected', async () => {
       const head = '';
 
-      await connectListener(getProxyInfo, net_matcher, socksRequest, socketRequest, head);
+      await connectListener(getProxyInfo, socksRequest, socketRequest, head);
 
       const lastCreateConnectionCall = last(Socks.createConnection.mock.calls);
 
