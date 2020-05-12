@@ -8,8 +8,9 @@ This is a **forked** project of the original `http-proxy-to-socks` project.
 
 * When the server is located in `mainland China`, the traffic data will be directly transferred between the client and the server (using [china_ip_list](https://github.com/17mon/china_ip_list/blob/master/china_ip_list.txt)).
 * When the server is banned (in the [gfwlist](https://github.com/gfwlist/gfwlist)), this proxy will prefer to use the `socks proxy` to transfer data.
-* Accept requests with multi-process `cluster` mode (and restart).
-* With nodejs `worker thread` to determine ip location.
+* When the server is located in internal network (`10.0.0.0/8`,`172.16.0.0/12`,`192.168.0.0/16`), no proxy.
+* support multi-process `cluster` mode (and auto restart).
+* support nodejs `worker thread` to determine ip location.
 
 ![](https://res.cloudinary.com/digf90pwi/image/upload/v1589102026/http-proxy-to-socks_1_ortiff.png)
 

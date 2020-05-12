@@ -13,6 +13,7 @@ const optionNames = [
   'level',
   'config',
   'host',
+  'dns',
 ];
 
 function getFileConfig(filePath) {
@@ -56,15 +57,16 @@ function main() {
     .option('-p, --port [port]', 'specify the listening port of http proxy server, default: 8080')
     .option('-l, --host [host]', 'specify the listening host of http proxy server, default: 127.0.0.1')
     .option('-c, --config [config]', 'read configs from file in json format')
+    .option('-d, --dns [dns]', 'dns servers')
     .option('--level [level]', 'log level, vals: info, error')
     .parse(process.argv);
 
-  const options = getOptionsArgs(cli);
+  const arg_options = getOptionsArgs(cli);
 
   let fileConfig = null;
 
-  if (options.config) {
-    fileConfig = getFileConfig(options.config);
+  if (arg_options.config) {
+    fileConfig = getFileConfig(arg_options.config);
   }
 
   const DEFAULT_OPTIONS = {
@@ -72,53 +74,71 @@ function main() {
     socks: '127.0.0.1:1080',
     proxyListReloadTimeout: 60,
     port: 18080,
+    dns: [
+      '114.114.114.114',
+      '1.1.1.1',
+    ].join(',')
   };
 
-  Object.assign(DEFAULT_OPTIONS, options, fileConfig);
+  const options = Object.assign(DEFAULT_OPTIONS, arg_options, fileConfig);
+
+
+
+
+  if (process.env.ENABLE_CLUSTER) {
+    run_cluster_mode(options);
+  } else {
+    run(options);
+  }
+
+}
+
+const run = (options) => {
 
   const { port, host, socks } = options;
 
-  const process_number = parseInt(process.env.PROCESS_NUM || `${numCPUs}`);
-
-  logger.info('HTTP to SOCKS proxy');
+  logger.info('HTTP to SOCKS proxy (normal)');
   logger.info(`SOCKS Server: ${socks}`);
   logger.info(`HTTP proxy: ${host}:${port}`);
 
 
-  if (process.env.DISABLE_CLUSTER) {
+  createServer(options, () => {
+    logger.info(`HPTS ${process.pid} started.`);
+  });
 
+};
 
-    createServer(options, () => {
-      logger.info(`HPTS ${process.pid} started.`);
+const run_cluster_mode = (options) => {
+
+  const process_number = parseInt(process.env.PROCESS_NUM || `${numCPUs}`);
+
+  const { port, host, socks } = options;
+
+  if (cluster.isMaster) {
+
+    logger.info('HTTP to SOCKS proxy (cluster)');
+    logger.info(`SOCKS Server: ${socks}`);
+    logger.info(`HTTP proxy: ${host}:${port}`);
+
+    // Fork workers.
+    for (let i = 0; i < process_number; i++) {
+      cluster.fork();
+    }
+
+    cluster.on('exit', (worker) => {
+      logger.error(`worker ${worker.process.pid} died, restart it.`);
+      setTimeout(() => { cluster.fork(); }, 0);
     });
 
   } else {
 
-    if (cluster.isMaster) {
+    createServer(options, () => {
+      logger.info(`Worker ${process.pid} started.`);
+    });
 
-      // Fork workers.
-      for (let i = 0; i < process_number; i++) {
-        cluster.fork();
-      }
-
-      cluster.on('exit', (worker) => {
-        logger.error(`worker ${worker.process.pid} died, restart it.`);
-        setTimeout(() => { cluster.fork(); }, 0);
-      });
-
-    } else {
-
-      createServer(options, () => {
-        logger.info(`Worker ${process.pid} started.`);
-      });
-
-    }
   }
 
-
-
-
-}
+};
 
 module.exports = {
   getOptionsArgs,

@@ -1,9 +1,10 @@
 const { map, some, memoize } = require('lodash');
-const dns = require('dns').promises;
+const { Resolver } = require('dns').promises;
 const cn_net_masks = require('./net_cn_ip_list');
 const { logger } = require('./logger');
 const workerpool = require('workerpool');
 const numCPUs = require('os').cpus().length;
+const is_ip = require('is-ip');
 
 const ip_in_nets = async (ip = '', nets_mask = []) => {
   const { map, some } = require('lodash');
@@ -11,12 +12,20 @@ const ip_in_nets = async (ip = '', nets_mask = []) => {
   return some(map(nets_mask, m => new Netmask(m)), m => m.contains(ip));
 };
 
+const timeout = (mSec = 1000, message = 'timeout') => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => { reject(new Error(message)); }, mSec);
+  });
+};
+
 class NetMatcher {
 
-  constructor(masks = []) {
+  constructor(masks = [], resolver = new Resolver()) {
+
     this._masks = masks;
     this._in_memory_dns_cache = new Map();
     this._in_memory_ip_match_cache = new Map();
+    this._resolver = resolver;
     this._pool = workerpool.pool({
       minWorkers: 1,
       maxWorkers: numCPUs * 2,
@@ -51,7 +60,10 @@ class NetMatcher {
   async cached_resolve(hostname = '') {
 
     if (!this._in_memory_dns_cache.has(hostname)) {
-      const ips = await dns.resolve4(hostname);
+      const ips = await Promise.race([
+        this._resolver.resolve4(hostname), // query dns
+        timeout(1 * 1000, 'dns query timeout') // query timeout
+      ]);
       this._in_memory_dns_cache.set(hostname, ips);
     }
     return this._in_memory_dns_cache.get(hostname);
@@ -59,6 +71,9 @@ class NetMatcher {
   }
 
   async hostname_in_net(hostname = '') {
+    if (is_ip(hostname)) {
+      return await this.cached_ip_in_net(hostname);
+    }
 
     try {
       const start_time = process.hrtime();
@@ -84,21 +99,22 @@ class NetMatcher {
   }
 }
 
-const create_cn_net_matcher = () => {
-  return new NetMatcher(cn_net_masks);
+const create_cn_net_matcher = (resolver) => {
+  return new NetMatcher(cn_net_masks, resolver);
 };
 
-const create_internal_net_matcher = () => {
-  return new NetMatcher([
+const create_internal_net_matcher = (resolver) => {
+  const private_network_mask = [
     '10.0.0.0/8',
     '172.16.0.0/12',
     '192.168.0.0/16',
-  ]);
+  ];
+  return new NetMatcher(private_network_mask, resolver);
 };
 
-const get_cn_net_matcher = memoize(() => create_cn_net_matcher());
+const get_cn_net_matcher = memoize(create_cn_net_matcher);
 
-const get_internal_net_matcher = memoize(() => create_internal_net_matcher());
+const get_internal_net_matcher = memoize(create_internal_net_matcher);
 
 module.exports = {
   NetMatcher,

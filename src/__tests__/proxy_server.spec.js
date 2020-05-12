@@ -267,6 +267,7 @@ describe('proxy_server', () => {
     it('should push this.proxyList', async () => {
       const options = {
         socks: `127.0.0.1:${SOCKS_PORT}`,
+        dns: '114.114.114.114,1.1.1.1'
       };
 
       createServer(options);
@@ -280,6 +281,7 @@ describe('proxy_server', () => {
     it('should listen both "request" and "connect" events', () => {
       const options = {
         proxy: `127.0.0.1:${SOCKS_PORT}`,
+        dns: '114.114.114.114,1.1.1.1'
       };
 
       createServer(options);

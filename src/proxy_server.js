@@ -5,6 +5,7 @@ const http = require('http');
 const net = require('net');
 const fs = require('fs');
 const Socks = require('socks');
+const { resolver } = require('./dns');
 const { logger } = require('./logger');
 const { get_gfw_list_matcher } = require('./gfwlist');
 const { get_internal_net_matcher, get_cn_net_matcher } = require('./net');
@@ -27,8 +28,8 @@ function getProxyObject(host, port, login, password) {
 async function is_direct_access(url_or_hostname = '') {
 
   const matcher = await get_gfw_list_matcher();
-  const net_matcher = get_cn_net_matcher();
-  const internal_net_matcher = get_internal_net_matcher();
+  const net_matcher = get_cn_net_matcher(resolver);
+  const internal_net_matcher = get_internal_net_matcher(resolver);
   let direct = true;
   let url = url_or_hostname;
   if (!url.startsWith('http')) {
@@ -177,6 +178,7 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
       socket.resume();
 
     });
+
   } else {
 
     logger.debug(`direct-connect: ${request.url}`);
@@ -209,8 +211,9 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
 }
 
 function ProxyServer(options) {
-  // TODO: start point
   http.Server.call(this, () => { });
+
+  resolver.setServers(options.dns.split(','));
 
   this.proxyList = [];
 
@@ -250,6 +253,14 @@ ProxyServer.prototype.loadProxy = function loadProxy(proxyLine) {
   } catch (ex) {
     logger.error(ex.message);
   }
+};
+
+ProxyServer.prototype.getMatchers = async function () {
+  return {
+    gfw_matcher: await get_gfw_list_matcher(),
+    ip_matcher: get_cn_net_matcher(this._resolver),
+    internal_net_ip_matcher: get_internal_net_matcher(this._resolver),
+  };
 };
 
 ProxyServer.prototype.loadProxyFile = function loadProxyFile(fileName) {
