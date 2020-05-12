@@ -18,11 +18,10 @@ class NetMatcher {
     this._in_memory_dns_cache = new Map();
     this._in_memory_ip_match_cache = new Map();
     this._pool = workerpool.pool({
-      minWorkers: numCPUs,
-      maxWorkers: numCPUs * 4,
+      minWorkers: 1,
+      maxWorkers: numCPUs * 2,
       workerType: 'thread'
     });
-
 
   }
 

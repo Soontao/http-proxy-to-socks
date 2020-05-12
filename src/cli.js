@@ -69,7 +69,7 @@ function main() {
 
   Object.assign(options, fileConfig);
 
-  const process_number = parseInt(process.env.PROCESS_NUM || `${(numCPUs * 2)}`);
+  const process_number = parseInt(process.env.PROCESS_NUM || `${numCPUs}`);
 
   const { port, socks, host } = options;
 
