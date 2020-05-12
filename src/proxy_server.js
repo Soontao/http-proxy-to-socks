@@ -24,6 +24,35 @@ function getProxyObject(host, port, login, password) {
   };
 }
 
+async function is_direct_access(url_or_hostname = '') {
+
+  const matcher = await get_gfw_list_matcher();
+  const net_matcher = get_cn_net_matcher();
+  const internal_net_matcher = get_internal_net_matcher();
+  let direct = true;
+  let url = url_or_hostname;
+  if (!url.startsWith('http')) {
+    url = `https://${url}`;
+  }
+  const { hostname } = new URL(url);
+
+  if (matcher(url)) {
+    logger.info(`gfw matched: ${url}, proxy`);
+    direct = false;
+  } else if (await internal_net_matcher.hostname_in_net(hostname)) {
+    logger.info(`ip matched (internal): ${url}, direct`);
+    direct = true;
+  } else if (!await net_matcher.hostname_in_net(hostname)) {
+    logger.info(`ip matched: ${url}, proxy`);
+    direct = false;
+  } else {
+    logger.info(`not matched: ${url}, direct`);
+  }
+
+  return direct;
+
+}
+
 function parseProxyLine(line) {
   const proxyInfo = line.split(':');
 
@@ -36,9 +65,6 @@ function parseProxyLine(line) {
 
 async function requestListener(getProxyInfo, request, response) {
 
-  const net_matcher = get_cn_net_matcher();
-  const internal_net_matcher = get_internal_net_matcher();
-
   const proxy = getProxyInfo();
   const ph = url.parse(request.url);
   const agentOpt = {
@@ -46,22 +72,7 @@ async function requestListener(getProxyInfo, request, response) {
     target: { host: ph.hostname, port: ph.port },
   };
 
-  let direct = true;
-
-  const matcher = await get_gfw_list_matcher();
-
-  if (matcher(request.url)) {
-    logger.info(`gfw matched: ${request.url}, proxy`);
-    direct = false;
-  } else if (await internal_net_matcher.hostname_in_net(ph.hostname)) {
-    logger.info(`ip matched (internal): ${request.url}, direct`);
-    direct = true;
-  } else if (!await net_matcher.hostname_in_net(ph.hostname)) {
-    logger.info(`ip matched: ${request.url}, proxy`);
-    direct = false;
-  } else {
-    logger.info(`not matched: ${request.url}, direct`);
-  }
+  const direct = await is_direct_access(request.url);
 
   const options = {
     port: ph.port,
@@ -101,9 +112,6 @@ async function requestListener(getProxyInfo, request, response) {
 
 async function connectListener(getProxyInfo, request, socketRequest, head) {
 
-  const net_matcher = get_cn_net_matcher();
-  const internal_net_matcher = get_internal_net_matcher();
-
   const proxy = getProxyInfo();
 
   const ph = url.parse(`http://${request.url}`);
@@ -132,23 +140,7 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
     }
   });
 
-  const matcher = await get_gfw_list_matcher();
-
-  let direct = true;
-
-  // for CONNECT, only have hostname:port
-  if (matcher(`https://${request.url}`)) {
-    logger.info(`gfw matched: ${request.url}, proxy`);
-    direct = false;
-  } else if (await internal_net_matcher.hostname_in_net(ph.hostname)) {
-    logger.info(`ip matched (internal): ${request.url}, direct`);
-    direct = true;
-  } else if (!await net_matcher.hostname_in_net(ph.hostname)) {
-    logger.info(`ip matched: ${request.url}, proxy`);
-    direct = false;
-  } else {
-    logger.info(`not matched: ${request.url}, direct`);
-  }
+  const direct = await is_direct_access(request.url);
 
   if (!direct) {
 

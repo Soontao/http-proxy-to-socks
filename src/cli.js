@@ -67,15 +67,26 @@ function main() {
     fileConfig = getFileConfig(options.config);
   }
 
-  Object.assign(options, fileConfig);
+  const DEFAULT_OPTIONS = {
+    host: '0.0.0.0',
+    socks: '127.0.0.1:1080',
+    proxyListReloadTimeout: 60,
+    port: 18080,
+  };
+
+  Object.assign(DEFAULT_OPTIONS, options, fileConfig);
+
+  const { port, host, socks } = options;
 
   const process_number = parseInt(process.env.PROCESS_NUM || `${numCPUs}`);
 
-  const { port, socks, host } = options;
+  logger.info('HTTP to SOCKS proxy');
+  logger.info(`SOCKS Server: ${socks}`);
+  logger.info(`HTTP proxy: ${host}:${port}`);
+
 
   if (process.env.DISABLE_CLUSTER) {
 
-    logger.info(`SOCKS Server: ${socks}, HTTP proxy: ${host}:${port}`);
 
     createServer(options, () => {
       logger.info(`HPTS ${process.pid} started.`);
@@ -84,8 +95,6 @@ function main() {
   } else {
 
     if (cluster.isMaster) {
-
-      logger.info(`Master ${process.pid}, SOCKS Server: ${socks}, HTTP proxy: ${host}:${port}`);
 
       // Fork workers.
       for (let i = 0; i < process_number; i++) {
