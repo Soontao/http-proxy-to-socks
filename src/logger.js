@@ -1,7 +1,7 @@
 const log4js = require('log4js');
 const { pid } = require('process');
 
-function createLogger(level = process.env.LOGGER_LEVEL || 'warn') {
+function createLogger(level = process.env.LOGGER_LEVEL || 'info') {
   const logger = log4js.getLogger(`${pid}`);
   logger.level = level;
   return logger;

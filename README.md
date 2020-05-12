@@ -6,12 +6,14 @@
 
 This is a **forked** project of the original `http-proxy-to-socks` project.
 
-* When the server is located in `mainland China`, data is directly transferred between the client and the server (using [china_ip_list](https://github.com/17mon/china_ip_list/blob/master/china_ip_list.txt)).
-* Nodejs multi-process `cluster` mode (and restart).
+* When the server is located in `mainland China`, the traffic data will be directly transferred between the client and the server (using [china_ip_list](https://github.com/17mon/china_ip_list/blob/master/china_ip_list.txt)).
+* When the server is banned (in the [gfwlist](https://github.com/gfwlist/gfwlist)), this proxy will prefer to use the `socks proxy` to transfer data.
+* Accept requests with multi-process `cluster` mode (and restart).
+* With nodejs `worker thread` to determine ip location.
 
 ![](https://res.cloudinary.com/digf90pwi/image/upload/v1589102026/http-proxy-to-socks_1_ortiff.png)
 
-## Usage
+## USAGE
 
 ```bash
 docker run --restart=always -d -p 18080:18080 -e SOCKS_SERVER=192.168.3.88:10080 --name htps theosun/htps:latest

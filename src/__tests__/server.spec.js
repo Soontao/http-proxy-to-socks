@@ -4,4 +4,5 @@ describe('server', () => {
   it('should export `createServer`', () => {
     expect(typeof server.createServer).toBe('function');
   });
+
 });

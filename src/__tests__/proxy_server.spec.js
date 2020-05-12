@@ -16,6 +16,21 @@ jest.mock('socks', () => ({
   Agent: jest.fn(() => mockAgent),
 }));
 
+jest.mock('../net.js', () => ({
+  create_cn_net_matcher: jest.fn(() => ({
+    hostname_in_net: jest.fn(),
+    destroy: jest.fn()
+  })),
+  get_cn_net_matcher: jest.fn(() => ({
+    hostname_in_net: jest.fn(),
+    destroy: jest.fn()
+  })),
+  get_internal_net_matcher: jest.fn(() => ({
+    hostname_in_net: jest.fn(),
+    destroy: jest.fn()
+  }))
+}));
+
 function last(array) {
   return array[array.length - 1];
 }
@@ -35,6 +50,7 @@ const {
 } = require('../proxy_server');
 const { random_int } = require('../util');
 const { logger } = require('../logger');
+const { create_cn_net_matcher } = require('../net');
 
 
 describe('proxy_server', () => {
@@ -47,9 +63,15 @@ describe('proxy_server', () => {
   let response;
   let socketRequest;
   let socket;
+  let net_matcher;
 
   beforeAll(() => {
     logger.level = 'off'; // disable logger in unit test
+    net_matcher = create_cn_net_matcher();
+  });
+
+  afterAll(async () => {
+    await net_matcher.destroy();
   });
 
   beforeEach(() => {
@@ -241,7 +263,8 @@ describe('proxy_server', () => {
   });
 
   describe('createServer', () => {
-    it('should push this.proxyList', () => {
+
+    it('should push this.proxyList', async () => {
       const options = {
         socks: `127.0.0.1:${SOCKS_PORT}`,
       };
