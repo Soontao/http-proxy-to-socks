@@ -75,15 +75,13 @@ function main() {
     proxyListReloadTimeout: 60,
     port: 18080,
     dns: [
+      '192.168.1.1',
       '114.114.114.114',
       '1.1.1.1',
     ].join(',')
   };
 
   const options = Object.assign(DEFAULT_OPTIONS, arg_options, fileConfig);
-
-
-
 
   if (process.env.ENABLE_CLUSTER) {
     run_cluster_mode(options);
@@ -98,7 +96,7 @@ const run = (options) => {
   const { port, host, socks } = options;
 
   logger.info('HTTP to SOCKS proxy (normal)');
-  logger.info(`SOCKS Server: ${socks}`);
+  logger.info(`SOCKS server: ${socks}`);
   logger.info(`HTTP proxy: ${host}:${port}`);
 
 
@@ -117,7 +115,7 @@ const run_cluster_mode = (options) => {
   if (cluster.isMaster) {
 
     logger.info('HTTP to SOCKS proxy (cluster)');
-    logger.info(`SOCKS Server: ${socks}`);
+    logger.info(`SOCKS server: ${socks}`);
     logger.info(`HTTP proxy: ${host}:${port}`);
 
     // Fork workers.

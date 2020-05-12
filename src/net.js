@@ -61,8 +61,14 @@ class NetMatcher {
 
     if (!this._in_memory_dns_cache.has(hostname)) {
       const ips = await Promise.race([
-        this._resolver.resolve4(hostname), // query dns
-        timeout(1 * 1000, 'dns query timeout') // query timeout
+        this._resolver
+          .resolve4(hostname)
+          .then(ips => {
+            this._in_memory_dns_cache.set(hostname, ips); // cache it if successful
+            return ips;
+          })
+        , // query dns
+        timeout(5 * 1000, 'dns query timeout') // query timeout
       ]);
       this._in_memory_dns_cache.set(hostname, ips);
     }
@@ -71,6 +77,7 @@ class NetMatcher {
   }
 
   async hostname_in_net(hostname = '') {
+
     if (is_ip(hostname)) {
       return await this.cached_ip_in_net(hostname);
     }

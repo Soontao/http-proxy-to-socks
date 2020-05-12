@@ -213,6 +213,7 @@ async function connectListener(getProxyInfo, request, socketRequest, head) {
 function ProxyServer(options) {
   http.Server.call(this, () => { });
 
+  logger.info(`DNS servers: ${options.dns}`);
   resolver.setServers(options.dns.split(','));
 
   this.proxyList = [];
@@ -253,14 +254,6 @@ ProxyServer.prototype.loadProxy = function loadProxy(proxyLine) {
   } catch (ex) {
     logger.error(ex.message);
   }
-};
-
-ProxyServer.prototype.getMatchers = async function () {
-  return {
-    gfw_matcher: await get_gfw_list_matcher(),
-    ip_matcher: get_cn_net_matcher(this._resolver),
-    internal_net_ip_matcher: get_internal_net_matcher(this._resolver),
-  };
 };
 
 ProxyServer.prototype.loadProxyFile = function loadProxyFile(fileName) {
