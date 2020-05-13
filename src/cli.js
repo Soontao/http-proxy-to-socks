@@ -3,7 +3,7 @@ const { resolve } = require('path');
 const cli = require('commander');
 const { version } = require('../package.json');
 const { createServer } = require('./server');
-const { logger } = require('./logger');
+const logger = require('./v2/Logger').createLogger('Bootstrap');
 const cluster = require('cluster');
 const numCPUs = require('os').cpus().length;
 

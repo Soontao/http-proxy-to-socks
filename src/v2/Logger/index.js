@@ -7,7 +7,7 @@ const { getLogger } = require('log4js');
  */
 const createLogger = (category) => {
   const newLogger = getLogger(category);
-  newLogger.level = process.env.LOGGER_LEVEL || 'warn';
+  newLogger.level = process.env.LOGGER_LEVEL || 'info';
   return newLogger;
 };
 

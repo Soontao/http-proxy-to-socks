@@ -5,19 +5,15 @@ const { register } = require('prom-client');
 const { Server } = require('http');
 const { Resolver } = require('dns').promises;
 const { DNSError } = require('../errors');
-const {
-  create_cn_net_matcher,
-  create_internal_net_matcher
-} = require('../NetMatcher');
+const { create_cn_net_matcher, create_internal_net_matcher } = require('../NetMatcher');
 const { TheGFWListMatcher } = require('../AdblockList');
 const { createLogger } = require('../Logger');
 const {
-  request_counter,
-  connect_counter,
-  direct_check_cache_counter,
-  direct_check_counter,
-  dns_query_timeout_counter,
-  client_counter,
+  request_total,
+  connect_total,
+  direct_check_total,
+  dns_query_timeout_total,
+  client_total,
 } = require('../Metrics');
 
 
@@ -48,8 +44,6 @@ class ProxyServer extends Server {
    */
   async isDirectAccess(urlOrHostname = '') {
 
-    direct_check_counter.inc();
-
     let direct = true;
     let url = urlOrHostname;
     if (!url.startsWith('http')) {
@@ -58,47 +52,48 @@ class ProxyServer extends Server {
 
     const { hostname } = new URL(url); // extract hostname
 
-    if (this._direct_check_cache.has(hostname)) {
-      direct_check_cache_counter.inc();
-      return this._direct_check_cache.get(hostname);
+    if (!this._direct_check_cache.has(hostname)) {
+
+      try {
+
+        // internal check
+        if (await this._internal_net_matcher.hostname_in_net(hostname)) {
+          this._logger.info(`ip matched (internal): ${url}, direct`);
+          direct = true;
+        }
+        // gfw check
+        else if (await TheGFWListMatcher.match(url)) {
+          this._logger.info(`gfw matched: ${url}, proxy`);
+          direct = false;
+        }
+        // cn net check
+        else if (!await this._cn_net_matcher.hostname_in_net(hostname)) {
+          this._logger.info(`ip matched: ${url}, proxy`);
+          direct = false;
+        }
+        // fallback
+        else {
+          this._logger.info(`not matched: ${url}, direct`);
+        }
+
+      } catch (err) {
+        if (err instanceof DNSError) {
+          dns_query_timeout_total.inc();
+          this._logger.error(`dns-lookup '${hostname}' failed: ${err.message}`);
+          direct = true;
+        } else {
+          this._logger.error(`match rule for '${urlOrHostname}' failed: ${err.message}`);
+          direct = true;
+        }
+      }
+
+      this._direct_check_cache.set(hostname, direct); // cache it
+      direct_check_total.labels(hostname, false).inc();
+    } else {
+      direct_check_total.labels(hostname, true).inc();
     }
 
-    try {
-
-      // internal check
-      if (await this._internal_net_matcher.hostname_in_net(hostname)) {
-        this._logger.info(`ip matched (internal): ${url}, direct`);
-        direct = true;
-      }
-      // gfw check
-      else if (await TheGFWListMatcher.match(url)) {
-        this._logger.info(`gfw matched: ${url}, proxy`);
-        direct = false;
-      }
-      // cn net check
-      else if (!await this._cn_net_matcher.hostname_in_net(hostname)) {
-        this._logger.info(`ip matched: ${url}, proxy`);
-        direct = false;
-      }
-      // fallback
-      else {
-        this._logger.info(`not matched: ${url}, direct`);
-      }
-
-    } catch (err) {
-      if (err instanceof DNSError) {
-        dns_query_timeout_counter.inc();
-        this._logger.error(`dns-lookup '${hostname}' failed: ${err.message}`);
-        direct = true;
-      } else {
-        this._logger.error(`match rule for '${urlOrHostname}' failed: ${err.message}`);
-        direct = true;
-      }
-    }
-
-    this._direct_check_cache.set(hostname, direct); // cache it
-
-    return direct;
+    return this._direct_check_cache.get(hostname);
   }
 
   /**
@@ -108,7 +103,7 @@ class ProxyServer extends Server {
    */
   _addClient(remoteAddress) {
     if (!this._clients.has(remoteAddress)) {
-      client_counter.inc();
+      client_total.inc();
       this._clients.add(remoteAddress);
     }
   }
@@ -145,8 +140,6 @@ class ProxyServer extends Server {
    */
   async onRequest(request, response) {
 
-    request_counter.inc();
-
     this._addClient(request.connection.remoteAddress);
 
     // metric
@@ -163,6 +156,17 @@ class ProxyServer extends Server {
     }
 
     const uri = new URL(request.url);
+
+    const metric = request_total.labels(uri.hostname, false);
+
+    const error_metric = request_total.labels(uri.hostname, true);
+
+    const log_error = (msg = 'error happened') => {
+      this._logger.error(msg);
+      error_metric.inc();
+    };
+
+    metric.inc();
 
     const agentOpt = {
       proxy: this._getProxyConfiguration(),
@@ -189,12 +193,12 @@ class ProxyServer extends Server {
     const proxyRequest = http.request(options);
 
     request.on('error', (err) => {
-      this._logger.error(`${err.message}`);
+      log_error(`${err.message}`);
       proxyRequest.destroy(err);
     });
 
     proxyRequest.on('error', (error) => {
-      this._logger.error(`${error.message} on proxy ${uri.host}`);
+      log_error(`${error.message} on proxy ${uri.host}`);
       response.writeHead(500);
       response.end('Connection error\n');
     });
@@ -216,7 +220,6 @@ class ProxyServer extends Server {
    */
   async onConnect(request, socketRequest, head) {
 
-    connect_counter.inc();
 
     this._addClient(request.connection.remoteAddress);
 
@@ -226,7 +229,17 @@ class ProxyServer extends Server {
 
     const { hostname: host, port } = uri;
 
+    const metric = connect_total.labels(host, false);
+    const error_metric = connect_total.labels(host, true);
     const socketTimeout = this._options.timeout || 120 * 1000;
+
+    const log_error = (msg = 'error happened') => {
+      this._logger.error(msg);
+      error_metric.inc();
+    };
+
+    metric.inc();
+
 
     /**
      * @type {import("stream").Duplex}
@@ -234,7 +247,7 @@ class ProxyServer extends Server {
     let socket;
 
     socketRequest.on('error', (err) => {
-      this._logger.error(`client error for ${request.url}: '${err.message}'`);
+      log_error(`client error for ${request.url}: '${err.message}'`);
       if (socket) {
         socket.destroy(err);
       }
@@ -265,13 +278,13 @@ class ProxyServer extends Server {
 
         if (error) {
           // error in SocksSocket creation
-          this._logger.error(`${error.message} connection creating on ${proxy.ipaddress}:${proxy.port}`);
+          log_error(`${error.message} connection creating on ${proxy.ipaddress}:${proxy.port}`);
           socketRequest.write(`HTTP/${request.httpVersion} 500 Connection error\r\n\r\n`);
           return;
         }
 
         socket.on('error', (err) => {
-          this._logger.error(`socket error for ${request.url}: '${err.message}'`);
+          log_error(`socket error for ${request.url}: '${err.message}'`);
           socketRequest.destroy(err);
         });
 
@@ -305,7 +318,7 @@ class ProxyServer extends Server {
       });
 
       socket.on('error', (err) => {
-        this._logger.error(`socket error for ${request.url}: '${err.message}'`);
+        log_error(`socket error for ${request.url}: '${err.message}'`);
         socketRequest.destroy(err);
       });
 

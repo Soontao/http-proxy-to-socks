@@ -6,7 +6,7 @@ const numCPUs = require('os').cpus().length;
 const is_ip = require('is-ip');
 const { DNSError } = require('../errors');
 const { createLogger } = require('../Logger');
-const { dns_query_counter, ip_determine_counter, dns_query_time_ms_counter } = require('../Metrics');
+const { dns_query_total, ip_determine_total, dns_query_time_ms_total } = require('../Metrics');
 
 const ip_in_nets = async (ip = '', nets_mask = []) => {
   const { map, some } = require('lodash');
@@ -51,7 +51,7 @@ class NetMatcher {
 
   async cached_ip_in_net(ip = '') {
     if (!this._in_memory_ip_match_cache.has(ip)) {
-      ip_determine_counter.inc();
+      ip_determine_total.inc();
       this._in_memory_ip_match_cache.set(ip, await this.ip_in_net(ip));
     }
 
@@ -68,7 +68,7 @@ class NetMatcher {
   async cached_resolve(hostname = '') {
 
     if (!_in_memory_dns_cache.has(hostname)) {
-      dns_query_counter.inc();
+      dns_query_total.labels(hostname, false).inc();
       await Promise.race([
         this._resolver
           .resolve4(hostname)
@@ -79,6 +79,8 @@ class NetMatcher {
         , // query dns
         timeout(5 * 1000, 'dns query timeout') // query timeout
       ]);
+    } else {
+      dns_query_total.labels(hostname, true).inc();
     }
     return _in_memory_dns_cache.get(hostname);
 
@@ -95,7 +97,7 @@ class NetMatcher {
       const ips = await this.cached_resolve(hostname);
       const end_time = process.hrtime(start_time);
       const query_ms = end_time[1] / 1000000;
-      dns_query_time_ms_counter.inc(query_ms);
+      dns_query_time_ms_total.inc(query_ms);
       this._logger.debug(`dns-query: ${hostname} - ${query_ms}ms`);
       if (ips) {
         return some(await Promise.all(map(ips, ip => this.cached_ip_in_net(ip))));
