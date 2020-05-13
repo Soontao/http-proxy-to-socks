@@ -16,6 +16,14 @@ const optionNames = [
   'dns',
 ];
 
+const DEFAULT_OPTIONS = {
+  host: '0.0.0.0',
+  socks: 'socks5://127.0.0.1:1080',
+  proxyListReloadTimeout: 60,
+  port: 18080,
+  dns: ['127.0.0.1', '114.114.114.114'].join(',')
+};
+
 function getFileConfig(filePath) {
 
   const absFile = resolve(process.cwd(), filePath);
@@ -69,17 +77,6 @@ function main() {
     fileConfig = getFileConfig(arg_options.config);
   }
 
-  const DEFAULT_OPTIONS = {
-    host: '0.0.0.0',
-    socks: '127.0.0.1:1080',
-    proxyListReloadTimeout: 60,
-    port: 18080,
-    dns: [
-      '192.168.1.1',
-      '114.114.114.114',
-      '1.1.1.1',
-    ].join(',')
-  };
 
   const options = Object.assign(DEFAULT_OPTIONS, arg_options, fileConfig);
 

@@ -9,6 +9,7 @@ const { resolver } = require('./dns');
 const { logger } = require('./logger');
 const { get_gfw_list_matcher } = require('./gfwlist');
 const { get_internal_net_matcher, get_cn_net_matcher } = require('./net');
+const { DNSError } = require('./errors');
 
 const SOCKET_TIMEOUT = 120 * 1000; // 120 seconds
 
@@ -37,18 +38,29 @@ async function is_direct_access(url_or_hostname = '') {
   }
   const { hostname } = new URL(url);
 
-  if (matcher(url)) {
-    logger.info(`gfw matched: ${url}, proxy`);
-    direct = false;
-  } else if (await internal_net_matcher.hostname_in_net(hostname)) {
-    logger.info(`ip matched (internal): ${url}, direct`);
-    direct = true;
-  } else if (!await net_matcher.hostname_in_net(hostname)) {
-    logger.info(`ip matched: ${url}, proxy`);
-    direct = false;
-  } else {
-    logger.info(`not matched: ${url}, direct`);
+  try {
+    if (matcher(url)) {
+      logger.info(`gfw matched: ${url}, proxy`);
+      direct = false;
+    } else if (await internal_net_matcher.hostname_in_net(hostname)) {
+      logger.info(`ip matched (internal): ${url}, direct`);
+      direct = true;
+    } else if (!await net_matcher.hostname_in_net(hostname)) {
+      logger.info(`ip matched: ${url}, proxy`);
+      direct = false;
+    } else {
+      logger.info(`not matched: ${url}, direct`);
+    }
+  } catch (err) {
+    if (err instanceof DNSError) {
+      logger.error(`dns-lookup '${hostname}' failed: ${err.message}`);
+      direct = true;
+    } else {
+      logger.error(`match rule for '${url_or_hostname}' failed: ${err.message}`);
+      direct = true;
+    }
   }
+
 
   return direct;
 

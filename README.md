@@ -11,6 +11,7 @@ This is a **forked** project of the original `http-proxy-to-socks` project.
 * When the server is located in internal network (`10.0.0.0/8`,`172.16.0.0/12`,`192.168.0.0/16`), no proxy.
 * support multi-process `cluster` mode (and auto restart).
 * support nodejs `worker thread` to determine ip location.
+* `prometheus` metrics on endpoint `/http-socks/__/metric`
 
 ![](https://res.cloudinary.com/digf90pwi/image/upload/v1589102026/http-proxy-to-socks_1_ortiff.png)
 

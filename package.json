@@ -33,10 +33,12 @@
   "dependencies": {
     "adblockpluscore": "github:adblockplus/adblockpluscore#adblockpluschrome-3.9",
     "commander": "^2.9.0",
+    "express": "^4.17.1",
     "is-ip": "^3.1.0",
     "lodash": "^4.17.15",
     "log4js": "^6.2.1",
     "netmask": "^1.0.6",
+    "prom-client": "^12.0.0",
     "socks": "^1.1.10",
     "workerpool": "^5.0.4"
   },
