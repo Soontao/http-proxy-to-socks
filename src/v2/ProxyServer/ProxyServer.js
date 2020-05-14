@@ -240,7 +240,6 @@ class ProxyServer extends Server {
 
     metric.inc();
 
-
     /**
      * @type {import("stream").Duplex}
      */
@@ -260,20 +259,27 @@ class ProxyServer extends Server {
       }
     });
 
+    const onRemoteSocketEnd = () => {
+      this._logger.debug(`socket for ${request.url}: ended`);
+      if (!socketRequest.destroyed) {
+        socketRequest.end();
+      }
+    };
+
+    const onRemoteSocketError = (err) => {
+      log_error(`socket error for ${request.url}: '${err.message}'`);
+      socketRequest.destroy(err);
+    };
+
     const direct = await this.isDirectAccess(request.url);
 
     if (!direct) {
 
-      const options = {
-        proxy,
-        target: { host, port },
-        command: 'connect',
-        timeout: socketTimeout
-      };
-
       this._logger.debug(`proxy-connect: ${request.url}`);
 
-      Socks.createConnection(options, (error, _socket) => {
+      Socks.createConnection({
+        proxy, target: { host, port }, command: 'connect', timeout: socketTimeout
+      }, (error, _socket) => {
         socket = _socket;
 
         if (error) {
@@ -283,17 +289,9 @@ class ProxyServer extends Server {
           return;
         }
 
-        socket.on('error', (err) => {
-          log_error(`socket error for ${request.url}: '${err.message}'`);
-          socketRequest.destroy(err);
-        });
+        socket.on('error', onRemoteSocketError);
 
-        socket.on('end', () => {
-          this._logger.debug(`socket for ${request.url}: ended`);
-          if (!socketRequest.destroyed) {
-            socketRequest.end();
-          }
-        });
+        socket.on('end', onRemoteSocketEnd);
 
         // tunneling to the host
         socket.pipe(socketRequest);
@@ -317,17 +315,9 @@ class ProxyServer extends Server {
 
       });
 
-      socket.on('error', (err) => {
-        log_error(`socket error for ${request.url}: '${err.message}'`);
-        socketRequest.destroy(err);
-      });
+      socket.on('error', onRemoteSocketError);
 
-      socket.on('end', () => {
-        this._logger.debug(`socket for ${request.url}: ended`);
-        if (!socketRequest.destroyed) {
-          socketRequest.end();
-        }
-      });
+      socket.on('end', onRemoteSocketEnd);
 
     }
 
