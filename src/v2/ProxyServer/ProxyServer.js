@@ -15,6 +15,7 @@ const {
   dns_query_timeout_total,
   client_total,
 } = require('../Metrics');
+const { runOnceWrapper } = require('../Utils');
 
 
 class ProxyServer extends Server {
@@ -161,10 +162,7 @@ class ProxyServer extends Server {
 
     const error_metric = request_total.labels(uri.hostname, true);
 
-    const log_error = (msg = 'error happened') => {
-      this._logger.error(msg);
-      error_metric.inc();
-    };
+    const log_error = runOnceWrapper((...args) => this._logger.error(...args), () => error_metric.inc());
 
     metric.inc();
 
@@ -233,10 +231,7 @@ class ProxyServer extends Server {
     const error_metric = connect_total.labels(host, true);
     const socketTimeout = this._options.timeout || 120 * 1000;
 
-    const log_error = (msg = 'error happened') => {
-      this._logger.error(msg);
-      error_metric.inc();
-    };
+    const log_error = runOnceWrapper((...args) => this._logger.error(...args), () => error_metric.inc());
 
     metric.inc();
 
