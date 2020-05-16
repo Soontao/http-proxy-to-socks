@@ -304,7 +304,7 @@ class ProxyServer extends Server {
 
       socket = net.connect({ port: uri.port, host: uri.hostname, timeout: socketTimeout }, () => {
 
-        socketRequest.write('HTTP/1.1 200 OK\r\n\r\n');
+        socketRequest.write('HTTP/1.1 200 Connection established\r\n\r\n');
         socket.write(head);
         socketRequest.pipe(socket);
         socket.pipe(socketRequest);
